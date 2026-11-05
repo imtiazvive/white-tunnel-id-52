@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Web - Pure Text & Real Group Chats</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #111b21; }
+    ::-webkit-scrollbar-thumb { background: #374248; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a555c; }
+    .chat-bg {
+      background-color: #0b141a;
+      background-image: radial-gradient(#1f2c34 1.2px, transparent 1.2px);
+      background-size: 22px 22px;
+    }
+  </style>
+</head>
+<body class="bg-[#111b21] text-[#e9edef] h-screen overflow-hidden select-none">
+  <div id="root" class="h-full"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    function App() {
+      const [users, setUsers] = useState([]);
+      const [selectedUserId, setSelectedUserId] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [inputText, setInputText] = useState('');
+      const [filterTab, setFilterTab] = useState('all');
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const chatEndRef = useRef(null);
+
+      useEffect(() => {
+        fetch('/api/full-chats')
+          .then(res => {
+            if (!res.ok) throw new Error("Backend server not responding");
+            return res.json();
+          })
+          .then(resData => {
+            const data = resData.data || resData;
+            setUsers(data);
+            if (data.length > 0) setSelectedUserId(data[0].id);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.warn("API error:", err);
+            setError("Data load kora jayni! Please terminal-e 'node server.js' chalan.");
+            setLoading(false);
+          });
+      }, []);
+
+      const activeUser = useMemo(() => {
+        return users.find(u => u.id === selectedUserId) || users[0];
+      }, [users, selectedUserId]);
+
+      const filteredUsers = useMemo(() => {
+        return users.filter(u => {
+          const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase());
+          if (filterTab === 'groups') return matchesSearch && u.isGroup;
+          if (filterTab === 'direct') return matchesSearch && !u.isGroup;
+          return matchesSearch;
+        });
+      }, [users, searchQuery, filterTab]);
+
+      useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, [selectedUserId]);
+
+      const handleSendMessage = (e) => {
+        e.preventDefault();
+        if (!inputText.trim() || !activeUser) return;
+
+        const newMsg = {
+          id: `msg_${activeUser.id}_${Date.now()}`,
+          sender: 'me',
+          senderName: 'You',
+          type: 'text',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: inputText
+        };
+
+        const updatedUsers = users.map(u => {
+          if (u.id === activeUser.id) {
+            return {
+              ...u,
+              lastMessage: {
+                text: inputText,
+                time: newMsg.time
+              },
+              messages: [...u.messages, newMsg]
+            };
+          }
+          return u;
+        });
+
+        setUsers(updatedUsers);
+        setInputText('');
+      };
+
+      if (loading) {
+        return (
+          <div className="flex h-screen items-center justify-center text-gray-400 bg-[#111b21] flex-col gap-2">
+            <div className="w-8 h-8 border-4 border-[#00a884] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm">Humanized Text-Only WhatsApp Chats load hocche...</p>
+          </div>
+        );
+      }
+
+      if (error) {
+        return (
+          <div className="flex h-screen items-center justify-center text-center p-4 bg-[#111b21] text-rose-400 flex-col gap-3">
+            <span className="text-3xl">⚠️</span>
+            <p className="font-medium text-base">{error}</p>
+            <p className="text-xs text-gray-400">Terminal-e <code className="bg-black/50 px-2 py-1 rounded">node server.js</code> chalay page refresh korun.</p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex h-screen w-full bg-[#111b21] overflow-hidden">
+          {/* Sidebar */}
+          <aside className="w-[380px] md:w-[420px] flex-shrink-0 border-r border-[#222d34] flex flex-col h-full bg-[#111b21]">
+            <div className="h-16 bg-[#202c33] px-4 flex items-center justify-between border-b border-[#222d34]">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shadow">
+                  J
+                </div>
+                <div>
+                  <span className="font-semibold text-sm text-[#e9edef] block leading-tight">WhatsApp Chats</span>
+                  <span className="text-[11px] text-[#8696a0]">75 Chats (Groups + Personal)</span>
+                </div>
+              </div>
+              
+            </div>
+
+            {/* Search Input */}
+            <div className="p-2 border-b border-[#222d34]">
+              <input
+                type="text"
+                placeholder="Search or start new chat"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#202c33] text-sm text-[#d1d7db] placeholder-[#8696a0] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-[#00a884]"
+              />
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto divide-y divide-[#202c33]/40">
+              {filteredUsers.map(user => {
+                const isSelected = user.id === activeUser?.id;
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => setSelectedUserId(user.id)}
+                    className={`flex items-center px-3 py-3 cursor-pointer transition select-none ${
+                      isSelected ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]'
+                    }`}
+                  >
+                    <div className="relative mr-3 flex-shrink-0">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base ${
+                        user.isGroup ? 'bg-teal-900/60 text-teal-300 border border-teal-700/50' : 'bg-[#202c33] border border-[#2a3942] text-[#8696a0]'
+                      }`}>
+                        {user.isGroup ? '👥' : user.name.charAt(0)}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline mb-1">
+                        <h4 className="text-[14px] font-medium text-[#e9edef] truncate">{user.name}</h4>
+                        <span className="text-[11px] text-[#8696a0]">{user.lastMessage?.time}</span>
+                      </div>
+                      <p className="text-[12px] text-[#8696a0] truncate">{user.lastMessage?.text}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* Chat Panel */}
+          {activeUser ? (
+            <main className="flex-1 flex flex-col h-full bg-[#0b141a] relative">
+              <div className="h-16 bg-[#202c33] px-4 flex items-center justify-between border-b border-[#222d34] z-10">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                    activeUser.isGroup ? 'bg-teal-900/60 text-teal-300' : 'bg-[#182229] border border-[#2a3942] text-[#8696a0]'
+                  }`}>
+                    {activeUser.isGroup ? '👥' : activeUser.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-[#e9edef] font-medium text-[15px] leading-tight">{activeUser.name}</h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3 text-[#aebac1]">
+                  {!activeUser.isGroup && (
+                    <span className="text-xs bg-[#182229] px-2.5 py-1 rounded border border-[#222d34] text-[#8696a0]">
+                      {activeUser.phone}
+                    </span>
+                  )}
+                  <button title="Options" className="p-1 hover:text-white text-lg">⋮</button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-4 chat-bg space-y-1">
+                <div className="flex justify-center mb-3">
+                  <span className="bg-[#182229] text-[#8696a0] text-[11px] px-3 py-1 rounded shadow">
+                    {activeUser.isGroup ? 'Group Conversation' : 'Direct Chat'} • {activeUser.messages?.length || 0} Messages
+                  </span>
+                </div>
+
+                {activeUser.messages?.map((msg, idx) => {
+                  const isMe = msg.sender === 'me';
+                  const prevMsg = activeUser.messages[idx - 1];
+                  const isSameSender = prevMsg && prevMsg.sender === msg.sender && prevMsg.senderName === msg.senderName;
+
+                  return (
+                    <div 
+                      key={msg.id} 
+                      className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isSameSender ? 'mt-0.5' : 'mt-2'}`}
+                    >
+                      <div className={`rounded-lg px-3 py-1.5 shadow max-w-sm md:max-w-md ${
+                        isMe ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#202c33] text-[#e9edef]'
+                      }`}>
+                        {activeUser.isGroup && !isMe && !isSameSender && msg.senderName && (
+                          <p className="text-[11.5px] font-semibold text-emerald-400 mb-0.5">{msg.senderName}</p>
+                        )}
+
+                        <p className="text-[13.5px] leading-relaxed break-words">{msg.text}</p>
+
+                        <div className="flex justify-end items-center space-x-1 mt-0.5">
+                          <span className="text-[10px] text-[#8696a0]">{msg.time}</span>
+                          {isMe && <span className="text-sky-400 text-xs font-bold">✓✓</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={chatEndRef} />
+              </div>
+
+              <form onSubmit={handleSendMessage} className="h-16 bg-[#202c33] px-4 flex items-center space-x-3 border-t border-[#222d34]">
+                <button type="button" className="text-[#8696a0] hover:text-white text-xl">😊</button>
+                <input 
+                  type="text" 
+                  placeholder="Type a message..." 
+                  className="flex-1 bg-[#2a3942] text-[#d1d7db] placeholder-[#8696a0] text-sm rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-[#00a884]"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                />
+                <button type="submit" className="text-[#00a884] hover:text-[#06cf9c] text-xl font-bold p-1">
+                  ➤
+                </button>
+              </form>
+            </main>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500">Kono chat select kora nai</div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
