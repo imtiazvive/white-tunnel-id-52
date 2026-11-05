@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Web - Pure Text & Real Group Chats</title>
+  <title>WhatsApp Web - Pure Text & Real Chats</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #111b21; }
@@ -20,254 +17,380 @@
     }
   </style>
 </head>
-<body class="bg-[#111b21] text-[#e9edef] h-screen overflow-hidden select-none">
-  <div id="root" class="h-full"></div>
-
-  <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
-
-    function App() {
-      const [users, setUsers] = useState([]);
-      const [selectedUserId, setSelectedUserId] = useState(null);
-      const [searchQuery, setSearchQuery] = useState('');
-      const [inputText, setInputText] = useState('');
-      const [filterTab, setFilterTab] = useState('all');
-      const [loading, setLoading] = useState(true);
-      const [error, setError] = useState(null);
-      const chatEndRef = useRef(null);
-
-      useEffect(() => {
-        fetch('/api/full-chats')
-          .then(res => {
-            if (!res.ok) throw new Error("Backend server not responding");
-            return res.json();
-          })
-          .then(resData => {
-            const data = resData.data || resData;
-            setUsers(data);
-            if (data.length > 0) setSelectedUserId(data[0].id);
-            setLoading(false);
-          })
-          .catch(err => {
-            console.warn("API error:", err);
-            setError("Data load kora jayni! Please terminal-e 'node server.js' chalan.");
-            setLoading(false);
-          });
-      }, []);
-
-      const activeUser = useMemo(() => {
-        return users.find(u => u.id === selectedUserId) || users[0];
-      }, [users, selectedUserId]);
-
-      const filteredUsers = useMemo(() => {
-        return users.filter(u => {
-          const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase());
-          if (filterTab === 'groups') return matchesSearch && u.isGroup;
-          if (filterTab === 'direct') return matchesSearch && !u.isGroup;
-          return matchesSearch;
-        });
-      }, [users, searchQuery, filterTab]);
-
-      useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, [selectedUserId]);
-
-      const handleSendMessage = (e) => {
-        e.preventDefault();
-        if (!inputText.trim() || !activeUser) return;
-
-        const newMsg = {
-          id: `msg_${activeUser.id}_${Date.now()}`,
-          sender: 'me',
-          senderName: 'You',
-          type: 'text',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: inputText
-        };
-
-        const updatedUsers = users.map(u => {
-          if (u.id === activeUser.id) {
-            return {
-              ...u,
-              lastMessage: {
-                text: inputText,
-                time: newMsg.time
-              },
-              messages: [...u.messages, newMsg]
-            };
-          }
-          return u;
-        });
-
-        setUsers(updatedUsers);
-        setInputText('');
-      };
-
-      if (loading) {
-        return (
-          <div className="flex h-screen items-center justify-center text-gray-400 bg-[#111b21] flex-col gap-2">
-            <div className="w-8 h-8 border-4 border-[#00a884] border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm">Humanized Text-Only WhatsApp Chats load hocche...</p>
+<body class="bg-[#111b21] text-[#e9edef] h-screen overflow-hidden select-none font-sans">
+  <div class="flex h-screen w-full bg-[#111b21] overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-[380px] md:w-[420px] flex-shrink-0 border-r border-[#222d34] flex flex-col h-full bg-[#111b21]">
+      <div class="h-16 bg-[#202c33] px-4 flex items-center justify-between border-b border-[#222d34]">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shadow">💬</div>
+          <div>
+            <span class="font-semibold text-sm text-[#e9edef] block leading-tight">WhatsApp Web</span>
+            <span id="chat-count-badge" class="text-[11px] text-[#8696a0]">৭৫টি চ্যাট লোড হয়েছে</span>
           </div>
-        );
-      }
-
-      if (error) {
-        return (
-          <div className="flex h-screen items-center justify-center text-center p-4 bg-[#111b21] text-rose-400 flex-col gap-3">
-            <span className="text-3xl">⚠️</span>
-            <p className="font-medium text-base">{error}</p>
-            <p className="text-xs text-gray-400">Terminal-e <code className="bg-black/50 px-2 py-1 rounded">node server.js</code> chalay page refresh korun.</p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="flex h-screen w-full bg-[#111b21] overflow-hidden">
-          {/* Sidebar */}
-          <aside className="w-[380px] md:w-[420px] flex-shrink-0 border-r border-[#222d34] flex flex-col h-full bg-[#111b21]">
-            <div className="h-16 bg-[#202c33] px-4 flex items-center justify-between border-b border-[#222d34]">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shadow">
-                  J
-                </div>
-                <div>
-                  <span className="font-semibold text-sm text-[#e9edef] block leading-tight">WhatsApp Chats</span>
-                  <span className="text-[11px] text-[#8696a0]">75 Chats (Groups + Personal)</span>
-                </div>
-              </div>
-              
-            </div>
-
-            {/* Search Input */}
-            <div className="p-2 border-b border-[#222d34]">
-              <input
-                type="text"
-                placeholder="Search or start new chat"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#202c33] text-sm text-[#d1d7db] placeholder-[#8696a0] rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-[#00a884]"
-              />
-            </div>
-
-            {/* List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-[#202c33]/40">
-              {filteredUsers.map(user => {
-                const isSelected = user.id === activeUser?.id;
-                return (
-                  <div
-                    key={user.id}
-                    onClick={() => setSelectedUserId(user.id)}
-                    className={`flex items-center px-3 py-3 cursor-pointer transition select-none ${
-                      isSelected ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]'
-                    }`}
-                  >
-                    <div className="relative mr-3 flex-shrink-0">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base ${
-                        user.isGroup ? 'bg-teal-900/60 text-teal-300 border border-teal-700/50' : 'bg-[#202c33] border border-[#2a3942] text-[#8696a0]'
-                      }`}>
-                        {user.isGroup ? '👥' : user.name.charAt(0)}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline mb-1">
-                        <h4 className="text-[14px] font-medium text-[#e9edef] truncate">{user.name}</h4>
-                        <span className="text-[11px] text-[#8696a0]">{user.lastMessage?.time}</span>
-                      </div>
-                      <p className="text-[12px] text-[#8696a0] truncate">{user.lastMessage?.text}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </aside>
-
-          {/* Chat Panel */}
-          {activeUser ? (
-            <main className="flex-1 flex flex-col h-full bg-[#0b141a] relative">
-              <div className="h-16 bg-[#202c33] px-4 flex items-center justify-between border-b border-[#222d34] z-10">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                    activeUser.isGroup ? 'bg-teal-900/60 text-teal-300' : 'bg-[#182229] border border-[#2a3942] text-[#8696a0]'
-                  }`}>
-                    {activeUser.isGroup ? '👥' : activeUser.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="text-[#e9edef] font-medium text-[15px] leading-tight">{activeUser.name}</h3>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 text-[#aebac1]">
-                  {!activeUser.isGroup && (
-                    <span className="text-xs bg-[#182229] px-2.5 py-1 rounded border border-[#222d34] text-[#8696a0]">
-                      {activeUser.phone}
-                    </span>
-                  )}
-                  <button title="Options" className="p-1 hover:text-white text-lg">⋮</button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-6 py-4 chat-bg space-y-1">
-                <div className="flex justify-center mb-3">
-                  <span className="bg-[#182229] text-[#8696a0] text-[11px] px-3 py-1 rounded shadow">
-                    {activeUser.isGroup ? 'Group Conversation' : 'Direct Chat'} • {activeUser.messages?.length || 0} Messages
-                  </span>
-                </div>
-
-                {activeUser.messages?.map((msg, idx) => {
-                  const isMe = msg.sender === 'me';
-                  const prevMsg = activeUser.messages[idx - 1];
-                  const isSameSender = prevMsg && prevMsg.sender === msg.sender && prevMsg.senderName === msg.senderName;
-
-                  return (
-                    <div 
-                      key={msg.id} 
-                      className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isSameSender ? 'mt-0.5' : 'mt-2'}`}
-                    >
-                      <div className={`rounded-lg px-3 py-1.5 shadow max-w-sm md:max-w-md ${
-                        isMe ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#202c33] text-[#e9edef]'
-                      }`}>
-                        {activeUser.isGroup && !isMe && !isSameSender && msg.senderName && (
-                          <p className="text-[11.5px] font-semibold text-emerald-400 mb-0.5">{msg.senderName}</p>
-                        )}
-
-                        <p className="text-[13.5px] leading-relaxed break-words">{msg.text}</p>
-
-                        <div className="flex justify-end items-center space-x-1 mt-0.5">
-                          <span className="text-[10px] text-[#8696a0]">{msg.time}</span>
-                          {isMe && <span className="text-sky-400 text-xs font-bold">✓✓</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={chatEndRef} />
-              </div>
-
-              <form onSubmit={handleSendMessage} className="h-16 bg-[#202c33] px-4 flex items-center space-x-3 border-t border-[#222d34]">
-                <button type="button" className="text-[#8696a0] hover:text-white text-xl">😊</button>
-                <input 
-                  type="text" 
-                  placeholder="Type a message..." 
-                  className="flex-1 bg-[#2a3942] text-[#d1d7db] placeholder-[#8696a0] text-sm rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-[#00a884]"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                />
-                <button type="submit" className="text-[#00a884] hover:text-[#06cf9c] text-xl font-bold p-1">
-                  ➤
-                </button>
-              </form>
-            </main>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500">Kono chat select kora nai</div>
-          )}
         </div>
-      );
+        <div class="flex items-center space-x-1 text-xs">
+          <button id="btn-tab-all" class="px-2.5 py-1 rounded bg-[#00a884] text-black font-semibold transition">All</button>
+          <button id="btn-tab-groups" class="px-2.5 py-1 rounded text-[#8696a0] hover:text-white transition">👥 Groups</button>
+          <button id="btn-tab-direct" class="px-2.5 py-1 rounded text-[#8696a0] hover:text-white transition">Chats</button>
+        </div>
+      </div>
+
+      <div class="p-2 bg-[#111b21]">
+        <div class="bg-[#202c33] rounded-lg flex items-center px-3 py-1.5 focus-within:ring-1 focus-within:ring-[#00a884]">
+          <span class="text-[#8696a0] mr-2 text-sm">🔍</span>
+          <input id="search-input" type="text" placeholder="Search chat or group..." class="bg-transparent border-none outline-none text-sm text-[#d1d7db] w-full placeholder-[#8696a0]" />
+        </div>
+      </div>
+
+      <div id="users-list-container" class="flex-1 overflow-y-auto divide-y divide-[#202c33]/40"></div>
+    </aside>
+
+    <!-- Main Chat Window -->
+    <main id="chat-window" class="flex-1 flex flex-col h-full bg-[#0b141a] relative">
+      <div class="h-16 bg-[#202c33] px-4 flex items-center justify-between border-b border-[#222d34] z-10">
+        <div class="flex items-center space-x-3">
+          <div id="active-avatar" class="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-[#182229] border border-[#2a3942] text-[#8696a0]">💬</div>
+          <div>
+            <h3 id="active-name" class="text-[#e9edef] font-medium text-[15px] leading-tight">Select a Chat</h3>
+            <p id="active-subtext" class="text-[11px] text-[#00a884] truncate max-w-sm"></p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3 text-[#aebac1]">
+          <span id="active-phone" class="text-xs bg-[#182229] px-2.5 py-1 rounded border border-[#222d34] text-[#8696a0] hidden"></span>
+          <button title="Options" class="p-1 hover:text-white text-lg">⋮</button>
+        </div>
+      </div>
+
+      <div id="messages-container" class="flex-1 overflow-y-auto px-6 py-4 chat-bg space-y-1"></div>
+
+      <form id="chat-input-form" class="h-16 bg-[#202c33] px-4 flex items-center space-x-3 border-t border-[#222d34]">
+        <button type="button" class="text-[#8696a0] hover:text-white text-xl">😊</button>
+        <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-[#2a3942] text-[#d1d7db] placeholder-[#8696a0] text-sm rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-[#00a884]" />
+        <button type="submit" class="text-[#00a884] hover:text-[#06cf9c] text-xl font-bold p-1">➤</button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // ইনলাইন ডেটা জেনারেটর (সার্ভার বা বাহ্যিক fetch ছাড়া স্বয়ংক্রিয় লোড)
+    // -------------------------------------------------------------
+    const romanticBoys = ["Shakib Al Hasan", "Tanvir Ahmed", "Rakib Hasan", "Farhan Sadik", "Mahbubur Rahman", "Zahid Hasan"];
+    const femaleNames = [
+      "Nusrat Jahan", "Sadia Afrin", "Ayesha Siddiqua", "Tanjina Akter", "Sumaiya Islam",
+      "Jannat", "Samia Rahman", "Mim Akter", "Tasnim Sultana", "Jannatul Ferdous",
+      "Nafisa Anjum", "Lamia Hasan", "Fatema Tuz Zohra", "Sabrina Mostafa", "Mehjabin Chowdhury",
+      "Riya Akter", "Sanjida Islam", "Anika Tabassum", "Sharmin Sultana", "Humaira Kabir",
+      "Tahmina Akter", "Zarin Subah", "Naznin Akter", "Fariha Mehzabin", "Israt Jahan",
+      "Umme Kulsum", "Nowshin Tarannum", "Bristy Roy", "Puja Das", "Mouly Roy",
+      "Aditi Sharma", "Tanushree Pal", "Suborna Paul", "Shraboni Sen", "Laboni Akter",
+      "Rubina Yasmin", "Shampa Khatun", "Mahfuza Akter", "Afroza Parvin", "Khadija Begum",
+      "Salma Sultana", "Halima Sadia", "Nasrin Jahan", "Shamima Nasrin", "Dilruba Yeasmin",
+      "Marufa Akter", "Shirin Sultana", "Bilkis Banu", "Rokeya Begum", "Hasna Hena",
+      "Lutfun Nahar", "Shahana Parvin", "Jesmin Akter", "Kohinur Akter"
+    ];
+    const groupTitles = [
+      "3 Shundori🌸", "Presentation Group 4 (Final)", "Midterm Survival Squad",
+      "Ammu jante parle khun korbe 🤫", "Fuchka Lovers Chittagong", "Class Bunk Committeeee",
+      "Late Warriors", "BFFs Forever 💕", "Hostel 402 Pera & Gossips ☕",
+      "Assignment Deadline Rona-Zari 😭", "Shopping & Sale Hunterzzz 🛍️", "Crush & Heartbreak Dept 💔",
+      "Campus Adda & Tea Squad ☕", "Last Minute Study Group 💀", "Tour Plan (Jeta kokhono hobe na) 🏖️"
+    ];
+
+    const usedTexts = new Set();
+    function getUniqueText(generatorFn) {
+      let attempt = 0;
+      let text = generatorFn(attempt);
+      while (usedTexts.has(text)) {
+        attempt++;
+        text = generatorFn(attempt);
+      }
+      usedTexts.add(text);
+      return text;
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    const boyDialogues = [
+      [(b, m, a) => `ajke class e tomai blue kurti te eto shundor lagtesilo ki bolbo ${b}${a ? ' ' + a : ''}`, (b, m, a) => `dhurr ki je bolo na shobar shamne oivabe takayshile keno shobai notice korse${a ? ' ' + a : ''}`, (b, m, a) => `takabo na mane? amr mon cheyeche tai takaisi tate karo ki?${a ? ' ' + a : ''}`, (b, m, a) => `shanto thamo bashay ashe text dio ekhon ammu room e ashe${a ? ' ' + a : ''}`],
+      [(b, m, a) => `raat 1:30 baje ekhono ghumao nai keno pagli tumi?${a ? ' ' + a : ''}`, (b, m, a) => `midterm er presentation slide banacchi tui ekhono jege keno?${a ? ' ' + a : ''}`, (b, m, a) => `tor kotha mone porlo tai bhablam ektu khobor niye dekhi${a ? ' ' + a : ''}`, (b, m, a) => `eto joton keno amr jonno boloto? slide ta ektu check koira dio kalke${a ? ' ' + a : ''}`],
+      [(b, m, a) => `kalke bikel e cafeteria r piche ashba 5 min er jonno ektu?${a ? ' ' + a : ''}`, (b, m, a) => `keu dekhe felle baje kotha bolbe amr bhoy kore shotti bolte${a ? ' ' + a : ''}`, (b, m, a) => `keu dekhbe na ami tor pochonder kitkat chocolate ta kine rakhsi${a ? ' ' + a : ''}`, (b, m, a) => `acha thik ache shudhu 5 min er jonno kintu tarpor class e jabo${a ? ' ' + a : ''}`],
+      [(b, m, a) => `oi cheletar sathe bench e boshe eto hashi mukhe ki kotha boltasili?${a ? ' ' + a : ''}`, (b, m, a) => `areh o to shudhu class note chaitasilo tui jealous hocchish keno pagol?${a ? ' ' + a : ''}`, (b, m, a) => `hae jealous hocchi karon tor ei hashi ta shudhu amr jonno reserved bujhli?${a ? ' ' + a : ''}`, (b, m, a) => `hahaha boro bhabuk kothakar shudhu tor jonno-i shob kisu thakbe khushi?${a ? ' ' + a : ''}`]
+    ];
+
+    const groupDialoguePool = [
+      "kire keu ki doc file ta open korsis?", "amr ekhaneopen e hocceiii na bahiiii", "wait ami abar drive link pathacchiwait...",
+      "keu introduction part ta likhba na? shob ki amarei kora lagbe bhai ajob :')", "ami conclusion r references part ta kortesiii to bhai tmr taekane daw",
+      "bhai tanjina koi? or e toh methodology likhar kotha chilo", "arey ami matro bashay ashlam re!! 10 min de ami boshtesi laptop eee bro",
+      "tara tari kor 11:59 te portal bondho hoye jabe bahiii", "sir kintu last date extend korbe na clear bole dise oita matai raka lagbe dekio sobai",
+      "tension nish na ami adha ghontay shesh kore upload dibo inshallahh", "kalke shokal 8 tar lab e ke ke jabi?", "ami parbo na bhai, eto shokale ghum thekei utha jay na",
+      "pagol hoye gesis naki bhai? sir bolse kalke na thakle 5 marks direct kat korbeee", "ekjon amr attendance ta diye dis na pleasee amr jor sorile🥺",
+      "sir mukher dike takay attendance nay tui janish na ze dhora khaile sbai morbo", "mim aisa por kalke ekdine ki r hobe", "daika dis tailee amake 7 tay mera jan gooood night :')",
+      "oii shon na ekta jinis dekhbi?", "ki re ki hoise boool", "ki abar crush re dekhsisss naki 🙈", "haaea lab e ajke black shirt pore ashchilo! eto cute lagtesilo ki bolbo 🙈"
+    ];
+
+    const directGirlPool = [
+      "dost shon or sathe abar jhogra hoise", "ami shokal theke call disi reply dey nai", "ekhon boltese bondhuder sathe adda dicchilo",
+      "eto attitude ami r shoijjo korte partesi na shotti :'", "ami ki ar text dibo naki ignore marbo bol to", "thak ami r kotha-i bolbo na koyek din dekhuk kemon lage",
+      "tui ki chapter 3 pora shuru korsis?", "amr kisu-i mathay dhuktese na formula gula eto kothin", "kalke ki ki ashbe sir je suggestion dilo oita ache tor kache?",
+      "please pic ta tule patha to ektu, ami pura blank boshe asi", "ajke raat e je ki porbo bujhtesi na ghum dhorse", "bhai ekta hashi-r kotha shunbi 😂",
+      "ajke class e sir jokhon question jigesh korse ami shobar shamne ulta palta answer disi bhai", "puro class eksathe hashi dise amr mukher dike takay",
+      "ami shorome kothay jabo khuje pacchilam na lol", "tui chilis na dekhe miss korsis shera drama hoise", "kire assignment er slide gula banano hoise tor?"
+    ];
+
+    const allUsers = [];
+    const now = new Date();
+
+    // 15 Groups (400 messages each)
+    for (let g = 0; g < 15; g++) {
+      const id = `group_${g + 1}`;
+      const name = groupTitles[g];
+      const members = [femaleNames[(g * 2) % femaleNames.length], femaleNames[(g * 2 + 1) % femaleNames.length], "You"];
+      const messages = [];
+      const baseTime = new Date(now.getTime() - 400 * 50000);
+      for (let m = 1; m <= 400; m++) {
+        const isMe = (m % 3 === 0);
+        const msgTime = new Date(baseTime.getTime() + m * 50000);
+        const baseText = groupDialoguePool[(m + g) % groupDialoguePool.length];
+        const uniqueText = getUniqueText((att) => (att > 0 || usedTexts.has(baseText)) ? `${baseText} [grp:${g + 1}-${m}${att ? '-' + att : ''}]` : baseText);
+        messages.push({
+          id: `msg_${id}_${m}`,
+          sender: isMe ? 'me' : 'user',
+          senderName: isMe ? 'You' : members[(m + g) % (members.length - 1)],
+          text: uniqueText,
+          time: msgTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+      const lastMsg = messages[messages.length - 1];
+      allUsers.push({ id, isGroup: true, name, members, lastSeen: "Today at " + lastMsg.time, unreadCount: (g * 2) % 4, messages, lastMessage: { text: lastMsg.text, time: lastMsg.time } });
+    }
+
+    // 6 Romantic Boys (300 messages each)
+    for (let b = 0; b < 6; b++) {
+      const id = `boy_${b + 1}`;
+      const name = romanticBoys[b];
+      const messages = [];
+      const baseTime = new Date(now.getTime() - 300 * 60000);
+      for (let m = 1; m <= 300; m++) {
+        const isMe = (m % 2 === 0);
+        const msgTime = new Date(baseTime.getTime() + m * 60000);
+        const themeIndex = ((m - 1) / 4 | 0) % boyDialogues.length;
+        const dialogueFn = boyDialogues[themeIndex][(m - 1) % 4];
+        const uniqueText = getUniqueText((att) => {
+          let t = dialogueFn(name, m, att);
+          if (att > 0) t += ` [boy:${b + 1}-${m}]`;
+          return t;
+        });
+        messages.push({
+          id: `msg_boy_${b + 1}_${m}`,
+          sender: isMe ? 'me' : 'user',
+          senderName: isMe ? 'You' : name,
+          text: uniqueText,
+          time: msgTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+      const lastMsg = messages[messages.length - 1];
+      allUsers.push({ id, isGroup: false, name, gender: "male", phone: `+880 17${String(18000000 + b * 234567).slice(0, 8)}`, status: b % 2 === 0 ? "online" : "offline", lastSeen: b % 2 === 0 ? "Online" : "Today at " + lastMsg.time, unreadCount: b + 1, messages, lastMessage: { text: lastMsg.text, time: lastMsg.time } });
+    }
+
+    // 54 Girls (400 messages each)
+    for (let f = 0; f < 54; f++) {
+      const id = `user_${f + 1}`;
+      const name = femaleNames[f];
+      const messages = [];
+      const baseTime = new Date(now.getTime() - 400 * 50000);
+      for (let m = 1; m <= 400; m++) {
+        const isMe = (m % 3 === 0);
+        const msgTime = new Date(baseTime.getTime() + m * 50000);
+        const baseText = directGirlPool[(m + f) % directGirlPool.length];
+        const uniqueText = getUniqueText((att) => (att > 0 || usedTexts.has(baseText)) ? `${baseText} [dm:${f + 1}-${m}${att ? '-' + att : ''}]` : baseText);
+        messages.push({
+          id: `msg_${id}_${m}`,
+          sender: isMe ? 'me' : 'user',
+          senderName: isMe ? 'You' : name,
+          text: uniqueText,
+          time: msgTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+      const lastMsg = messages[messages.length - 1];
+      allUsers.push({ id, isGroup: false, name, gender: "female", phone: `+880 18${String(14000000 + f * 123456).slice(0, 8)}`, status: f % 3 === 0 ? "online" : "offline", lastSeen: f % 3 === 0 ? "Online" : "Today at " + lastMsg.time, unreadCount: (f * 2) % 5, messages, lastMessage: { text: lastMsg.text, time: lastMsg.time } });
+    }
+
+    // -------------------------------------------------------------
+    // UI রেন্ডারিং
+    // -------------------------------------------------------------
+    let activeChatId = allUsers[0].id;
+    let currentTab = 'all';
+    let searchQuery = '';
+
+    const usersListContainer = document.getElementById('users-list-container');
+    const messagesContainer = document.getElementById('messages-container');
+    const searchInput = document.getElementById('search-input');
+    const chatInputForm = document.getElementById('chat-input-form');
+    const chatInput = document.getElementById('chat-input');
+
+    const activeName = document.getElementById('active-name');
+    const activeSubtext = document.getElementById('active-subtext');
+    const activeAvatar = document.getElementById('active-avatar');
+    const activePhone = document.getElementById('active-phone');
+
+    const btnAll = document.getElementById('btn-tab-all');
+    const btnGroups = document.getElementById('btn-tab-groups');
+    const btnDirect = document.getElementById('btn-tab-direct');
+
+    function updateTabStyles() {
+      [btnAll, btnGroups, btnDirect].forEach(btn => btn.className = "px-2.5 py-1 rounded text-[#8696a0] hover:text-white transition");
+      if (currentTab === 'all') btnAll.className = "px-2.5 py-1 rounded bg-[#00a884] text-black font-semibold transition";
+      if (currentTab === 'groups') btnGroups.className = "px-2.5 py-1 rounded bg-[#00a884] text-black font-semibold transition";
+      if (currentTab === 'direct') btnDirect.className = "px-2.5 py-1 rounded bg-[#00a884] text-black font-semibold transition";
+    }
+
+    btnAll.onclick = () => { currentTab = 'all'; updateTabStyles(); renderUserList(); };
+    btnGroups.onclick = () => { currentTab = 'groups'; updateTabStyles(); renderUserList(); };
+    btnDirect.onclick = () => { currentTab = 'direct'; updateTabStyles(); renderUserList(); };
+
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderUserList();
+    });
+
+    function renderUserList() {
+      const filtered = allUsers.filter(u => {
+        const matchesName = u.name.toLowerCase().includes(searchQuery);
+        if (currentTab === 'groups') return matchesName && u.isGroup;
+        if (currentTab === 'direct') return matchesName && !u.isGroup;
+        return matchesName;
+      });
+
+      if (filtered.length === 0) {
+        usersListContainer.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">কোনো চ্যাট পাওয়া যায়নি</div>';
+        return;
+      }
+
+      usersListContainer.innerHTML = filtered.map(u => {
+        const isSelected = u.id === activeChatId;
+        const bg = isSelected ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]';
+        const avatarBg = u.isGroup ? 'bg-teal-900/60 text-teal-300 border border-teal-700/50' : (u.gender === 'male' ? 'bg-sky-900/60 text-sky-300 border border-sky-700/50' : 'bg-[#202c33] border border-[#2a3942] text-[#8696a0]');
+        const avatarText = u.isGroup ? '👥' : (u.name ? u.name.charAt(0) : '?');
+        const lastText = (u.lastMessage && u.lastMessage.text) ? u.lastMessage.text : '';
+        const lastTime = (u.lastMessage && u.lastMessage.time) ? u.lastMessage.time : '';
+
+        return `
+          <div onclick="selectChat('${u.id}')" class="flex items-center px-3 py-3 cursor-pointer transition select-none ${bg}">
+            <div class="relative mr-3 flex-shrink-0">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-base ${avatarBg}">${avatarText}</div>
+              ${u.status === 'online' ? '<span class="absolute bottom-0 right-0 w-3 h-3 bg-[#00a884] border-2 border-[#111b21] rounded-full"></span>' : ''}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline mb-1">
+                <h4 class="text-[14px] font-medium text-[#e9edef] truncate">${u.name}</h4>
+                <span class="text-[11px] text-[#8696a0]">${lastTime}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <p class="text-[13px] text-[#8696a0] truncate max-w-[210px]">${lastText}</p>
+                ${u.unreadCount > 0 ? `<span class="bg-[#00a884] text-[#111b21] text-[11px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">${u.unreadCount}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.selectChat = function(id) {
+      activeChatId = id;
+      renderUserList();
+      renderMessages();
+    };
+
+    function renderMessages() {
+      const active = allUsers.find(u => u.id === activeChatId);
+      if (!active) return;
+
+      activeName.innerText = active.name;
+      activeAvatar.className = `w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+        active.isGroup ? 'bg-teal-900/60 text-teal-300' : (active.gender === 'male' ? 'bg-sky-900/60 text-sky-300' : 'bg-[#182229] border border-[#2a3942] text-[#8696a0]')
+      }`;
+      activeAvatar.innerText = active.isGroup ? '👥' : active.name.charAt(0);
+
+      if (active.isGroup) {
+        activeSubtext.innerText = `${active.members.length} members: ${active.members.join(', ')}`;
+        activePhone.classList.add('hidden');
+      } else {
+        activeSubtext.innerText = active.status === 'online' ? 'Online' : (active.lastSeen || 'Offline');
+        if (active.phone) {
+          activePhone.innerText = active.phone;
+          activePhone.classList.remove('hidden');
+        } else {
+          activePhone.classList.add('hidden');
+        }
+      }
+
+      const msgs = active.messages || [];
+      let html = `
+        <div class="flex justify-center mb-3">
+          <span class="bg-[#182229] text-[#8696a0] text-[11px] px-3 py-1 rounded shadow">
+            ${active.isGroup ? 'Group Conversation' : (active.gender === 'male' ? 'Classmate Chat' : 'Direct Conversation')} • ${msgs.length} Messages
+          </span>
+        </div>
+      `;
+
+      for (let i = 0; i < msgs.length; i++) {
+        const msg = msgs[i];
+        const isMe = msg.sender === 'me';
+        const prevMsg = msgs[i - 1];
+        const isSameSender = prevMsg && prevMsg.sender === msg.sender && prevMsg.senderName === msg.senderName;
+        const align = isMe ? 'justify-end' : 'justify-start';
+        const mt = isSameSender ? 'mt-0.5' : 'mt-2';
+        const bubbleBg = isMe ? 'bg-[#005c4b] text-[#e9edef]' : 'bg-[#202c33] text-[#e9edef]';
+
+        let senderHeader = '';
+        if (active.isGroup && !isMe && !isSameSender && msg.senderName) {
+          senderHeader = `<p class="text-[11.5px] font-semibold text-emerald-400 mb-0.5">${msg.senderName}</p>`;
+        }
+
+        html += `
+          <div class="flex ${align} ${mt}">
+            <div class="rounded-lg px-3 py-1.5 shadow max-w-sm md:max-w-md ${bubbleBg}">
+              ${senderHeader}
+              <p class="text-[13.5px] leading-relaxed break-words">${msg.text || ''}</p>
+              <div class="flex justify-end items-center space-x-1 mt-0.5">
+                <span class="text-[10px] text-[#8696a0]">${msg.time || ''}</span>
+                ${isMe ? '<span class="text-sky-400 text-xs font-bold">✓✓</span>' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      messagesContainer.innerHTML = html;
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    chatInputForm.onsubmit = (e) => {
+      e.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text || !activeChatId) return;
+
+      const active = allUsers.find(u => u.id === activeChatId);
+      if (!active) return;
+
+      const newMsg = {
+        id: `msg_${active.id}_${Date.now()}`,
+        sender: 'me',
+        senderName: 'You',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: text
+      };
+
+      active.messages.push(newMsg);
+      active.lastMessage = { text: text, time: newMsg.time };
+
+      chatInput.value = '';
+      renderUserList();
+      renderMessages();
+    };
+
+    renderUserList();
+    renderMessages();
   </script>
 </body>
 </html>
