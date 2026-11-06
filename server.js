@@ -9,11 +9,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// 6 Boys (Romantic & Flirty Classmates)
-const romanticBoys = [
-  "Shakib Al Hasan", "Tanvir Ahmed", "Rakib Hasan", 
-  "Farhan Sadik", "Mahbubur Rahman", "Zahid Hasan"
-];
+
 
 // 54 Female contacts
 const femaleNames = [
